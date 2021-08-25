@@ -1,6 +1,7 @@
 import sys
 import pandas
 import time
+import numpy
 import json
 
 from vantage6.tools.util import warn, info
@@ -61,11 +62,12 @@ def master(client, data, columns):
 
     info("Check that column names are correct")
     if not all(x['column_names_correct'] for x in results):
-        warn("Column names are not corect on all sites?!")
+        warn("Column names are not correct on all sites?!")
         return None
 
     # process the output
     info("Process node info to global stats")
+    columns_series = pandas.Series(columns)
     g_stats = {}
 
     # check that all dataset reported their headers are correct
@@ -78,16 +80,15 @@ def master(client, data, columns):
     g_stats["number_of_rows"] = sum([x["number_of_rows"] for x in results])
     # info(f"n={g_stats['number_of_rows']}")
 
-    # compute global statics for numeric columns
+    # compute global statistics for numeric columns
     info("Computing numerical column statistics")
-    columns_series = pandas.Series(columns)
-    numeric_colums = columns_series.loc[columns_series.isin(['Int64','float64'])]
+    numeric_colums = columns_series.loc[columns_series.isin(['numeric','n'])]
     for header in numeric_colums.keys():
 
         n = g_stats["number_of_rows"]
 
         # extract the statistics for each column and all results
-        stats = [ result["statistics"][header] for result in results ]
+        stats = [result["statistics"][header] for result in results]
 
         # compute globals
         g_min = min([x.get("min") for x in stats])
@@ -117,7 +118,21 @@ def master(client, data, columns):
             "median": g_median
         }
 
-        #TODO process categorial columns
+    # compute global statistics for categorical columns
+    info("Computing categorical column statistics")
+    categorical_columns = columns_series.loc[columns_series.isin(['category', 'c'])]
+    for header in categorical_columns.keys():
+        
+        stats = [result["statistics"][header] for result in results]
+        all_keys = list(set([key for result in results for key in result["statistics"][header].keys()]))
+        
+        categories_dict = dict()
+        for key in all_keys:
+            key_sum = sum([x.get(key) for x in stats if key in x.keys()])
+            categories_dict[key] = key_sum
+
+        g_stats[header] = categories_dict
+
     info("master algorithm complete")
 
     return g_stats
@@ -143,11 +158,15 @@ def RPC_summary(dataframe, columns):
     columns_series = pandas.Series(data=columns)
 
     # compare column names from dataset to the input column names
-    info("Checking column-names")
-    column_names_correct = list(dataframe.keys()) == list(columns_series.keys())
+    info("Checking (given) column-names")
+    column_names_correct = set(list(columns_series.keys())).issubset(list(dataframe.keys()))
     if not column_names_correct:
+        problematic_column_names = list(numpy.setdiff1d(list(columns_series.keys()), list(dataframe.keys())))
         warn("Column names do not match. Exiting.")
-        return {"column_names_correct": column_names_correct}
+        return {"column_names_correct": column_names_correct, 
+                "column_names_not_in_dataset": problematic_column_names}
+    
+    dataframe = dataframe[list(columns.keys())]
 
     # count the number of rows in the dataset
     info("Counting number of rows")
@@ -161,7 +180,7 @@ def RPC_summary(dataframe, columns):
 
     # min, max, median, average, Q1, Q3, missing_values
     columns = {}
-    numeric_colums = columns_series.loc[columns_series.isin(['Int64','float64'])]
+    numeric_colums = columns_series.loc[columns_series.isin(['numeric','n'])]
     for column_name in numeric_colums.keys():
         info(f"Numerical column={column_name} is processed")
         column_values = dataframe[column_name]
@@ -187,9 +206,9 @@ def RPC_summary(dataframe, columns):
         }
 
     # return the categories in categorial columns
-    categoral_colums = columns_series.loc[columns_series.isin(['category'])]
-    for column_name in categoral_colums.keys():
-        info(f"Categorial column={column_name} is processed")
+    categorical_columns = columns_series.loc[columns_series.isin(['category', 'c'])]
+    for column_name in categorical_columns.keys():
+        info(f"Categorical column={column_name} is processed")
         columns[column_name] = dataframe[column_name].value_counts().to_dict()
 
     return {
