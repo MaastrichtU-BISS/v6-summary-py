@@ -42,7 +42,8 @@ client.authenticate("frank@iknl.nl", "password")
 client.setup_encryption(None)
 
 # Define algorithm input
-# include the columns you want to summarize and specify if they are categorical ("category" or "c") or numeric ("numeric" or "n")
+# include the columns you want to summarize, 
+# and specify if they are categorical ("category" or "c") or numeric ("numeric" or "n")
 input_ = {
     "master": True,
     "method":"master",
@@ -51,7 +52,7 @@ input_ = {
         "columns": {
             "num_awards": "numeric",
             "prog": "category",
-            "math":"n"
+            "math": "n"
         }        
     }
 }
