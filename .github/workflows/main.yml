@@ -29,15 +29,15 @@ jobs:
         uses: docker/login-action@v1.10.0
         with:
           registry: harbor2.vantage6.ai
-          username: robot$github-actions
+          username: ${{ secrets.HARBOR2_USERNAME }}
           password: ${{ secrets.HARBOR2_TOKEN }}
       
-#       - name: Build and push Docker images
-#         uses: docker/build-push-action@v2.7.0
-#         with:
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v2.7.0
+        with:
+          push: True
+          tags: testing/summary:latest
           
-#           push: true
-
 
       # Runs a single command using the runners shell
       #- name: Run a one-line script
