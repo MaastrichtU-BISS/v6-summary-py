@@ -4,9 +4,13 @@
 </h1>
 
 <h3 align=center> A privacy preserving federated learning solution</h3>
-[![CI](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml)
-<!-- [![Docker Image](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml) -->
+<!-- [![CI](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml) -->
 
+<h3 align="center">
+
+[![Docker Image](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml)
+
+</h3>
 # Federated Summary
 
 |:warning: priVAcy preserviNg federaTed leArninG infrastructurE for Secure Insight eXchange (VANTAGE6) |
