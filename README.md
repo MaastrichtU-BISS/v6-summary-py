@@ -4,6 +4,7 @@
 </h1>
 
 <h3 align=center> A privacy preserving federated learning solution</h3>
+[![Docker Image](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml)
 
 # Federated Summary
 
