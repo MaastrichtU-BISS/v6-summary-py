@@ -42,29 +42,41 @@ client.authenticate("frank@iknl.nl", "password")
 client.setup_encryption(None)
 
 # Define algorithm input
+# include the columns you want to summarize and specify if they are categorical ("category" or "c") or numeric ("numeric" or "n")
 input_ = {
-    "master": "true",
+    "master": True,
     "method":"master",
-    "args": [
-      {
-        "num_awards":"Int64",
-        "prog":"category", "math":"Int64"
-      }
-    ],
-    "kwargs": {}
+    "args": [],
+    "kwargs": {
+        "columns": {
+            "num_awards": "numeric",
+            "prog": "category",
+            "math":"n"
+        }        
+    }
 }
 
 # Send the task to the central server
-task = client.post_task(
-    name="testing",
-    image="harbor.vantage6.ai/algorithms/summary",
-    collaboration_id=1,
-    input_= input_,
-    organization_ids=[2]
-)
+task = client.task.create(name="algo_testing-summary",
+                          image="harbor2.vantage6.ai/testing/summary:latest",
+                          input=input_,
+                          collaboration=1, 
+                          organizations=[2],
+                          description=''
+                          )
 
 # Retrieve the results
-res = client.get_results(task_id=task.get("id")
+print("Waiting for results")
+task_id = average_task['id']
+task_info = client.task.get(task_id)
+while not task_info.get("complete"):
+    task_info = client.task.get(task_id, include_results=True)
+    print("Waiting for results")
+    time.sleep(3)
+print("Results are ready!")
+
+result_info = client.result.get(task_info.get('results')[0].get('id'))
+result = result_info['result']
 ```
 
 ## Test / Develop
