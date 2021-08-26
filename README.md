@@ -63,12 +63,12 @@ task = client.task.create(name="algo_testing-summary",
                           input=input_,
                           collaboration=1, 
                           organizations=[2],
-                          description=''
+                          description=""
                           )
 
 # Retrieve the results
 print("Waiting for results")
-task_id = average_task['id']
+task_id = task.get("id")
 task_info = client.task.get(task_id)
 while not task_info.get("complete"):
     task_info = client.task.get(task_id, include_results=True)
@@ -76,8 +76,8 @@ while not task_info.get("complete"):
     time.sleep(3)
 print("Results are ready!")
 
-result_info = client.result.get(task_info.get('results')[0].get('id'))
-result = result_info['result']
+result_info = client.result.get(task_info.get("results")[0].get("id"))
+result = result_info["result"]
 ```
 
 ## Test / Develop
