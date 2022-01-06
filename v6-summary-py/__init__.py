@@ -82,14 +82,14 @@ def master(client, data, *args, **kwargs):
 
     # compute global statistics for numeric columns
     info("Computing numerical column statistics")
-    for header in results[0]['statistics'].keys():
-        if not results[0]['statistics'][header]['numeric']:
+    for colname in results[0]['statistics'].keys():
+        if not results[0]['statistics'][colname]['numeric']:
             continue
 
         n = g_stats["number_of_rows"]
 
         # extract the statistics for each column and all results
-        stats = [result["statistics"][header] for result in results]
+        stats = [result["statistics"][colname] for result in results]
 
         # compute globals
         g_min = min([x.get("min") for x in stats])
@@ -110,7 +110,7 @@ def master(client, data, *args, **kwargs):
             min([g_max, g_mean + u_std])
         ]
 
-        g_stats[header] = {
+        g_stats[colname] = {
             "min": g_min,
             "max": g_max,
             "nan": g_nan,
@@ -121,12 +121,12 @@ def master(client, data, *args, **kwargs):
 
     # compute global statistics for categorical columns
     info("Computing categorical column statistics")
-    for header in results[0]['statistics'].keys():
-        if results[0]['statistics'][header]['numeric']:
+    for colname in results[0]['statistics'].keys():
+        if results[0]['statistics'][colname]['numeric']:
             continue
         
-        stats = [result["statistics"][header]['counts'] for result in results]
-        all_keys = list(set([key for result in results for key in result["statistics"][header]['counts'].keys()]))
+        stats = [result["statistics"][colname]['counts'] for result in results]
+        all_keys = list(set([key for result in results for key in result["statistics"][colname]['counts'].keys()]))
         
         categories_dict = dict()
         for key in all_keys:
@@ -134,8 +134,8 @@ def master(client, data, *args, **kwargs):
             categories_dict[key] = key_sum
 
         cat_stats = {'categories': categories_dict}
-        cat_stats['nan'] = sum([result['statistics'][header]['nan'] for result in results])
-        g_stats[header] = cat_stats
+        cat_stats['nan'] = sum([result['statistics'][colname]['nan'] for result in results])
+        g_stats[colname] = cat_stats
 
         g_stats
 
