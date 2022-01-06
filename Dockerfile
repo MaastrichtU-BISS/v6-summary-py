@@ -3,7 +3,7 @@ FROM harbor.vantage6.ai/algorithms/algorithm-base
 
 # This is a placeholder that should be overloaded by invoking
 # docker build with '--build-arg PKG_NAME=...'
-ARG PKG_NAME="v6-summary-py"
+ARG PKG_NAME="v6_summary_py"
 
 # install federated algorithm
 COPY . /app
