@@ -62,12 +62,12 @@ def master(client, data, *args, **kwargs):
 
     info("Check that all nodes have the same columns")
     for res in results:
-        for key, col in res['statistics'].items():
+        for key, colType in res['columns'].items():
             for res2 in results:
-                if key not in res2['statistics']:
+                if key not in res2['columns']:
                     warn("Column names are not identical on all sites?!")
                     return None
-                if col['numeric'] != res2['statistics'][key]['numeric']:
+                if colType != res2['columns'][key]:
                     warn("Column types don't seem to match across sites!")
                     return None
 
@@ -78,12 +78,20 @@ def master(client, data, *args, **kwargs):
     # count the total number of rows of all datasets
     info("Count the total number of all rows from all datasets")
     g_stats["number_of_rows"] = sum([x["number_of_rows"] for x in results])
+
+    # remove any results with fewer than 10 rows
+    for i, small in reversed(list(enumerate([x["number_of_rows"] < 10 for x in results]))):
+        if small:
+            info('got a result with fewer than 10 rows, removing it for merging of results')
+            results.pop(i)
+
+
     # info(f"n={g_stats['number_of_rows']}")
 
     # compute global statistics for numeric columns
     info("Computing numerical column statistics")
     for colname in results[0]['statistics'].keys():
-        if not results[0]['statistics'][colname]['numeric']:
+        if not results[0]['columns'][colname] == 'numeric':
             continue
 
         n = g_stats["number_of_rows"]
@@ -122,7 +130,7 @@ def master(client, data, *args, **kwargs):
     # compute global statistics for categorical columns
     info("Computing categorical column statistics")
     for colname in results[0]['statistics'].keys():
-        if results[0]['statistics'][colname]['numeric']:
+        if results[0]['columns'][colname] != 'categorical':
             continue
         
         stats = [result["statistics"][colname]['counts'] for result in results]
@@ -165,6 +173,11 @@ def RPC_summary(dataframe):
 
     print('List of non-numeric columns:')
     non_numerics = list(dataframe.select_dtypes(exclude=[np.number]).columns)
+
+    columns = {
+        **{colname: 'numeric' for colname in numeric_columns},
+        **{colname: 'categorical' for colname in non_numerics}    
+    }
     
     # count the number of rows in the dataset
     info("Counting number of rows")
@@ -172,11 +185,12 @@ def RPC_summary(dataframe):
     if number_of_rows < 10:
         warn("Dataset has less than 10 rows. Exiting.")
         return {
-            "number_of_rows": number_of_rows
+            "number_of_rows": number_of_rows,
+            "columns": columns,
         }
 
     # min, max, median, average, Q1, Q3, missing_values
-    columns = {}
+    statistics = {}
     for column_name in numeric_columns:
         info(f"Numerical column={column_name} is processed")
         column_values = dataframe[column_name]
@@ -188,8 +202,7 @@ def RPC_summary(dataframe):
         total = column_values.sum()
         std = column_values.std()
         sq_dev_sum = (column_values-mean).pow(2).sum()
-        columns[column_name] = {
-            "numeric": True,
+        statistics[column_name] = {
             "min": minimum,
             "q1": q1,
             "median": median,
@@ -205,13 +218,13 @@ def RPC_summary(dataframe):
     # return the categories in categorial columns
     for column_name in non_numerics:
         info(f"Categorical column={column_name} is processed")
-        columns[column_name] = {
-            'numeric': False,
+        statistics[column_name] = {
             'counts': dataframe[column_name].value_counts().to_dict(),
             'nan': dataframe[column_name].isna().sum()
         }
 
     return {
         "number_of_rows": number_of_rows,
-        "statistics": columns
+        "statistics": statistics,
+        "columns": columns
     }
