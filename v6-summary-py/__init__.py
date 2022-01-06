@@ -1,13 +1,13 @@
 import sys
-import pandas
+import pandas as pd
 import time
-import numpy
+import numpy as np
 import json
 
 from vantage6.tools.util import warn, info
 
 
-def master(client, data, columns):
+def master(client, data, *args, **kwargs):
     """
     Master algorithm to compute a summary of the federated datasets.
 
@@ -31,9 +31,7 @@ def master(client, data, columns):
     input_ = {
         "method": "summary",
         "args": [],
-        "kwargs": {
-            "columns": columns
-        }
+        "kwargs": kwargs
     }
 
     # obtain organizations that are within my collaboration
@@ -51,29 +49,31 @@ def master(client, data, columns):
     # wait for all results
     # TODO subscribe to websocket, to avoid polling
     task_id = task.get("id")
-    task = client.request(f"task/{task_id}")
+    # task = client.request(f"task/{task_id}")
+    task = client.get_task(task_id) # MOCK
     while not task.get("complete"):
-        task = client.request(f"task/{task_id}")
+        # task = client.request(f"task/{task_id}")
+        task = client.get_task(task_id) # MOCK
         info("Waiting for results")
         time.sleep(1)
 
     info("Obtaining results")
     results = client.get_results(task_id=task.get("id"))
 
-    info("Check that column names are correct")
-    if not all(x['column_names_correct'] for x in results):
-        warn("Column names are not correct on all sites?!")
-        return None
+    info("Check that all nodes have the same columns")
+    for res in results:
+        for key, col in res['statistics'].items():
+            for res2 in results:
+                if key not in res2['statistics']:
+                    warn("Column names are not identical on all sites?!")
+                    return None
+                if col['numeric'] != res2['statistics'][key]['numeric']:
+                    warn("Column types don't seem to match across sites!")
+                    return None
 
     # process the output
     info("Process node info to global stats")
-    columns_series = pandas.Series(columns)
     g_stats = {}
-
-    # check that all dataset reported their headers are correct
-    info("Check if all column names on all sites are correct")
-    g_stats["column_names_correct"] = all([x["column_names_correct"] for x in results])
-    # info(f"correct={g_stats['column_names_correct']}")
 
     # count the total number of rows of all datasets
     info("Count the total number of all rows from all datasets")
@@ -82,8 +82,9 @@ def master(client, data, columns):
 
     # compute global statistics for numeric columns
     info("Computing numerical column statistics")
-    numeric_colums = columns_series.loc[columns_series.isin(['numeric','n'])]
-    for header in numeric_colums.keys():
+    for header in results[0]['statistics'].keys():
+        if not results[0]['statistics'][header]['numeric']:
+            continue
 
         n = g_stats["number_of_rows"]
 
@@ -120,24 +121,29 @@ def master(client, data, columns):
 
     # compute global statistics for categorical columns
     info("Computing categorical column statistics")
-    categorical_columns = columns_series.loc[columns_series.isin(['category', 'c'])]
-    for header in categorical_columns.keys():
+    for header in results[0]['statistics'].keys():
+        if results[0]['statistics'][header]['numeric']:
+            continue
         
-        stats = [result["statistics"][header] for result in results]
-        all_keys = list(set([key for result in results for key in result["statistics"][header].keys()]))
+        stats = [result["statistics"][header]['counts'] for result in results]
+        all_keys = list(set([key for result in results for key in result["statistics"][header]['counts'].keys()]))
         
         categories_dict = dict()
         for key in all_keys:
             key_sum = sum([x.get(key) for x in stats if key in x.keys()])
             categories_dict[key] = key_sum
 
-        g_stats[header] = categories_dict
+        cat_stats = {'categories': categories_dict}
+        cat_stats['nan'] = sum([result['statistics'][header]['nan'] for result in results])
+        g_stats[header] = cat_stats
+
+        g_stats
 
     info("master algorithm complete")
 
     return g_stats
 
-def RPC_summary(dataframe, columns):
+def RPC_summary(dataframe):
     """
     Computes a summary of all columns of the dataframe
 
@@ -145,8 +151,6 @@ def RPC_summary(dataframe, columns):
     ----------
     dataframe : pandas dataframe
         Pandas dataframe that contains the local data.
-    columns : Dictonairy
-        Dict containing column name and column (panda) type pairs
 
     Returns
     -------
@@ -155,33 +159,25 @@ def RPC_summary(dataframe, columns):
     """
 
     # create series from input column names
-    columns_series = pandas.Series(data=columns)
+    info('List of numeric columns:')
+    numeric_columns = list(dataframe.select_dtypes(include=[np.number]).columns)
+    info(str(numeric_columns))
 
-    # compare column names from dataset to the input column names
-    info("Checking (given) column-names")
-    column_names_correct = set(list(columns_series.keys())).issubset(list(dataframe.keys()))
-    if not column_names_correct:
-        problematic_column_names = list(numpy.setdiff1d(list(columns_series.keys()), list(dataframe.keys())))
-        warn("Column names do not match. Exiting.")
-        return {"column_names_correct": column_names_correct, 
-                "column_names_not_in_dataset": problematic_column_names}
+    print('List of non-numeric columns:')
+    non_numerics = list(dataframe.select_dtypes(exclude=[np.number]).columns)
     
-    dataframe = dataframe[list(columns.keys())]
-
     # count the number of rows in the dataset
     info("Counting number of rows")
     number_of_rows = len(dataframe)
     if number_of_rows < 10:
         warn("Dataset has less than 10 rows. Exiting.")
         return {
-            "column_names_correct": column_names_correct,
             "number_of_rows": number_of_rows
         }
 
     # min, max, median, average, Q1, Q3, missing_values
     columns = {}
-    numeric_colums = columns_series.loc[columns_series.isin(['numeric','n'])]
-    for column_name in numeric_colums.keys():
+    for column_name in numeric_columns:
         info(f"Numerical column={column_name} is processed")
         column_values = dataframe[column_name]
         q1, median, q3 = column_values.quantile([0.25,0.5,0.75]).values
@@ -193,6 +189,7 @@ def RPC_summary(dataframe, columns):
         std = column_values.std()
         sq_dev_sum = (column_values-mean).pow(2).sum()
         columns[column_name] = {
+            "numeric": True,
             "min": minimum,
             "q1": q1,
             "median": median,
@@ -206,13 +203,15 @@ def RPC_summary(dataframe, columns):
         }
 
     # return the categories in categorial columns
-    categorical_columns = columns_series.loc[columns_series.isin(['category', 'c'])]
-    for column_name in categorical_columns.keys():
+    for column_name in non_numerics:
         info(f"Categorical column={column_name} is processed")
-        columns[column_name] = dataframe[column_name].value_counts().to_dict()
+        columns[column_name] = {
+            'numeric': False,
+            'counts': dataframe[column_name].value_counts().to_dict(),
+            'nan': dataframe[column_name].isna().sum()
+        }
 
     return {
-        "column_names_correct": column_names_correct,
         "number_of_rows": number_of_rows,
         "statistics": columns
     }
