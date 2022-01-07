@@ -24,7 +24,10 @@ setup(
     packages=find_packages(),
     python_requires='>=3.6',
     install_requires=[
-        # 'vantage6-client'
+        'vantage6-client',
+        'sparqlwrapper',
+        'rdflib',
+        'pandas',
     ]
     # ,
     # extras_require={

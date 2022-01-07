@@ -151,7 +151,7 @@ def master(client, data, *args, **kwargs):
 
     return g_stats
 
-def RPC_summary(dataframe):
+def RPC_summary(dataframe, *args, **kwargs):
     """
     Computes a summary of all columns of the dataframe
 
