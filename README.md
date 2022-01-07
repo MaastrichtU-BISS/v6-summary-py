@@ -1,9 +1,3 @@
-# Deprecated 
-> 
-> :warning: **This project has been moved to: https://github.com/IKNL/vantage6-algorithms ** :warning:
-> 
--------------------------------------------------------------------------
-
 <h1 align="center">
   <br>
   <a href="https://vantage6.ai"><img src="https://github.com/IKNL/guidelines/blob/master/resources/logos/vantage6.png?raw=true" alt="vantage6" width="400"></a>
@@ -12,11 +6,6 @@
 <h3 align=center> A privacy preserving federated learning solution</h3>
 <!-- [![CI](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml) -->
 
-<h3 align="center">
-
-[![Docker Image](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml/badge.svg)](https://github.com/IKNL/v6-summary-py/actions/workflows/main.yml)
-
-</h3>
 # Federated Summary
 
 |:warning: priVAcy preserviNg federaTed leArninG infrastructurE for Secure Insight eXchange (VANTAGE6) |
@@ -25,11 +14,19 @@
 
 Algorithm that is inspired by the `Summary` function in R. It report the `Min`, `Q1`, `Mean`, `Median`, `Q3`, `Max` and number of `Nan` values per column from each `Node`.
 
+On top of the functionality provided by [IKNL's version of this algorithm](https://github.com/IKNL/vantage6-algorithms/tree/statistics/summary), it looks up the amount of NANs
+in non-numeric columns. It also automatically detects which columns are present
+and whether they are numeric or categorical.
+
+This algorithm can also be used for SPARQL queries, building this is as simple as
+commenting out the standard docker wrapper and uncommenting the SPARQL one. The
+query can then be supplied under `kwargs['query']`.
+
 ## Possible Privacy Issues
 
 🚨 Categorial column with only one category <br />
 🚨 `Min` an `Max` for each column is reported <br />
-🚨 Column names can be geussed, by trail and error
+🚨 Column names are returned
 
 ## Privacy Protection
 
@@ -55,11 +52,7 @@ input_ = {
     "method":"master",
     "args": [],
     "kwargs": {
-        "columns": {
-            "num_awards": "numeric",
-            "prog": "category",
-            "math": "n"
-        }        
+        "query": "SELECT * WHERE {?s ?p ?o}"     
     }
 }
 
