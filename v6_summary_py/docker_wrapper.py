@@ -131,7 +131,10 @@ class DockerWrapper(WrapperBase):
 class SparqlDockerWrapper(WrapperBase):
     @staticmethod
     def load_data(database_uri, input_data):
-        query = input_data['query']
+        query = input_data['kwargs']['query']
+        if input_data.get('master'):
+            info("Not querying endpoint in master container")
+            return pandas.DataFrame()
         return SparqlDockerWrapper._query_triplestore(database_uri, query)
 
     @staticmethod
