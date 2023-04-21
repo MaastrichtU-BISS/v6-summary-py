@@ -1,3 +1,7 @@
-pandas >= 0.24.0rc1
+vantage6
+vantage6-common
+vantage6-client
+pandas
+
 requests
 pyjwt

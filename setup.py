@@ -20,7 +20,7 @@ setup(
     description='vantage6 summary',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/jaspersnel/v6-summary-py',
+    url='https://github.com/MaastrichtU-BISS/v6-summary-py',
     packages=find_packages(),
     python_requires='>=3.6',
     install_requires=[
